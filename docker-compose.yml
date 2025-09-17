@@ -1,0 +1,16 @@
+services:
+  wol:
+    # build: .
+    image: oreaba/wakeonlan:latest
+    container_name: wakeonlan
+    env_file:
+      - .env
+    ports:
+      - "80:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

@@ -7,7 +7,7 @@ FROM python:3.11-alpine
 WORKDIR /app
 
 # Add curl for healthcheck
-RUN apk add --no-cache curl
+RUN apk add --no-cache curl nano
 
 COPY --from=builder /install /usr/local
 COPY main.py .

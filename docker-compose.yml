@@ -1,5 +1,5 @@
 services:
-  wol:
+  wakeonlan:
     # build: .
     image: oreaba/wakeonlan:latest
     container_name: wakeonlan

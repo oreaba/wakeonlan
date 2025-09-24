@@ -5,7 +5,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from datetime import datetime
 
-from wol import send_wol
+from oreaba_wol import send_wol
 from dotenv import load_dotenv
 from ping3 import ping
 

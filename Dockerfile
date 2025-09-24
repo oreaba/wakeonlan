@@ -10,7 +10,6 @@ WORKDIR /app
 RUN apk add --no-cache curl nano
 
 COPY --from=builder /install /usr/local
-COPY main.py .
-COPY .env .
+COPY . .
 EXPOSE 80
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]

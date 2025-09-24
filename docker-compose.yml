@@ -3,6 +3,7 @@ services:
     # build: .
     image: oreaba/wakeonlan:latest
     container_name: wakeonlan
+    network_mode: "host"
     # env_file:
       # - .env
     ports:

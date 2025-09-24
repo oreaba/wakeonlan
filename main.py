@@ -3,6 +3,7 @@ import asyncio
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+from datetime import datetime
 
 from ping3 import ping
 from wakeonlan import send_magic_packet
@@ -77,10 +78,12 @@ async def check_status(ip: str | None = None):
 
     try:
         response_time = ping(target, timeout=2)  # seconds
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         if response_time is not None:
-            status = f"✅ online ({round(response_time*1000)} ms)"
+            status = f"✅ online ({round(response_time*1000)} ms) @ {now}"
         else:
-            status = "❌ offline"
+            status = f"❌ offline @ {now}"
         return {"ip": target, "status": status}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -88,7 +91,7 @@ async def check_status(ip: str | None = None):
 
 
 @app.get("/status/stream")
-async def stream_status(ip: str | None = None, delay: int = 1, max_retries: int = 30):
+async def stream_status(ip: str | None = None, delay: int = 3, max_retries: int = 30):
     """
     Stream ping results every `delay` seconds until the PC is online or retries run out.
     Uses ping3 for cleaner response times.
@@ -101,15 +104,16 @@ async def stream_status(ip: str | None = None, delay: int = 1, max_retries: int 
         for attempt in range(1, max_retries + 1):
             try:
                 response_time = ping(target, timeout=2)
+                now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 if response_time is not None:
                     status = f"✅ online ({round(response_time*1000)} ms)"
-                    yield f"data: {{\"ip\": \"{target}\", \"status\": \"{status}\", \"attempt\": {attempt}}}\n\n"
+                    yield f'data: {{"time": "{now}", "ip": "{target}", "status": "{status}", "attempt": {attempt}}}\n\n'
                     break
                 else:
                     status = "❌ offline"
-                    yield f"data: {{\"ip\": \"{target}\", \"status\": \"{status}\", \"attempt\": {attempt}}}\n\n"
+                    yield f'data: {{"time": "{now}", "ip": "{target}", "status": "{status}", "attempt": {attempt}}}\n\n'
             except Exception as e:
-                yield f"data: {{\"ip\": \"{target}\", \"status\": \"error: {str(e)}\", \"attempt\": {attempt}}}\n\n"
+                yield f'data: {{"time": "{now}", "ip": "{target}", "status": "error: {str(e)}", "attempt": {attempt}}}\n\n'
 
             await asyncio.sleep(delay)
 

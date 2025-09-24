@@ -5,7 +5,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from datetime import datetime
 
-from oreaba_wol import send_wol
+from wol import send_wol
 from dotenv import load_dotenv
 from ping3 import ping
 
@@ -43,6 +43,7 @@ async def wake_default_pc():
     Wake the default PC from .env settings.
     """
     try:
+        mac = MAC_ADDRESS
         send_wol(MAC_ADDRESS)
         return {"status": "success", "message": f"Magic packet sent to {mac} via 255.255.255.255:9"}
     except Exception as e:
@@ -98,6 +99,18 @@ async def stream_status(ip: str | None = None, delay: int = 3, max_retries: int 
             await asyncio.sleep(delay)
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+@app.get("/start")
+async def start_pc(ip: str | None = None, delay: int = 3, max_retries: int = 30):
+    """
+    Calls /wake first, then streams /status/stream.
+    """
+    # Step 1: Call wake_default_pc()
+    wake_response = await wake_default_pc()
+
+    # Step 2: Reuse the existing stream_status endpoint
+    return await stream_status(ip=ip, delay=delay, max_retries=max_retries)
+    
 
 @app.get("/")
 async def root():

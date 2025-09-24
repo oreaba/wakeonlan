@@ -1,6 +1,10 @@
 import os
+import asyncio
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
+
+from ping3 import ping
 from wakeonlan import send_magic_packet
 from dotenv import load_dotenv
 
@@ -10,8 +14,9 @@ load_dotenv()
 # Environment variables
 MAC_ADDRESS = os.getenv("MAC_ADDRESS")
 BROADCAST_IP = os.getenv("BROADCAST_IP")  # keep None if not set
+TARGET_IP = os.getenv("TARGET_IP")        # for status check
 
-app = FastAPI(title="Wake-on-LAN API", version="1.0")
+app = FastAPI(title="Wake-on-LAN API", version="1.2")
 
 
 class WakeRequest(BaseModel):
@@ -63,6 +68,52 @@ async def wake_default_pc():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.get("/status")
+async def check_status(ip: str | None = None):
+    target = ip or TARGET_IP
+    if not target:
+        raise HTTPException(status_code=400, detail="No IP provided or configured")
+
+    try:
+        response_time = ping(target, timeout=2)  # seconds
+        if response_time is not None:
+            status = f"✅ online ({round(response_time*1000)} ms)"
+        else:
+            status = "❌ offline"
+        return {"ip": target, "status": status}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+
+@app.get("/status/stream")
+async def stream_status(ip: str | None = None, delay: int = 1, max_retries: int = 30):
+    """
+    Stream ping results every `delay` seconds until the PC is online or retries run out.
+    Uses ping3 for cleaner response times.
+    """
+    target = ip or TARGET_IP
+    if not target:
+        raise HTTPException(status_code=400, detail="No IP provided or configured")
+
+    async def event_generator():
+        for attempt in range(1, max_retries + 1):
+            try:
+                response_time = ping(target, timeout=2)
+                if response_time is not None:
+                    status = f"✅ online ({round(response_time*1000)} ms)"
+                    yield f"data: {{\"ip\": \"{target}\", \"status\": \"{status}\", \"attempt\": {attempt}}}\n\n"
+                    break
+                else:
+                    status = "❌ offline"
+                    yield f"data: {{\"ip\": \"{target}\", \"status\": \"{status}\", \"attempt\": {attempt}}}\n\n"
+            except Exception as e:
+                yield f"data: {{\"ip\": \"{target}\", \"status\": \"error: {str(e)}\", \"attempt\": {attempt}}}\n\n"
+
+            await asyncio.sleep(delay)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 @app.get("/")
 async def root():

@@ -5,9 +5,9 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from datetime import datetime
 
-from ping3 import ping
-from wakeonlan import send_magic_packet
+from wol import send_wol
 from dotenv import load_dotenv
+from ping3 import ping
 
 # Load .env file
 load_dotenv()
@@ -31,15 +31,8 @@ async def wake_pc(request: WakeRequest):
     """
     try:
         mac = request.mac_address or MAC_ADDRESS
-
-        if not mac:
-            raise HTTPException(status_code=400, detail="MAC address not provided")
-
-        send_magic_packet(mac)
-        msg = f"Magic packet sent to {mac}"
-
-        return {"status": "success", "message": msg}
-
+        send_wol(mac)
+        return {"status": "success", "message": f"Magic packet sent to {mac} via 255.255.255.255:9"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -50,16 +43,11 @@ async def wake_default_pc():
     Wake the default PC from .env settings.
     """
     try:
-        if not MAC_ADDRESS:
-            raise HTTPException(status_code=400, detail="Default MAC address not configured")
-
-        send_magic_packet(MAC_ADDRESS)
-        msg = f"Magic packet sent to {MAC_ADDRESS}"
-
-        return {"status": "success", "message": msg}
-
+        send_wol(MAC_ADDRESS)
+        return {"status": "success", "message": f"Magic packet sent to {mac} via 255.255.255.255:9"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @app.get("/status")

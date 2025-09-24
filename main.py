@@ -14,7 +14,6 @@ load_dotenv()
 
 # Environment variables
 MAC_ADDRESS = os.getenv("MAC_ADDRESS")
-BROADCAST_IP = os.getenv("BROADCAST_IP")  # keep None if not set
 TARGET_IP = os.getenv("TARGET_IP")        # for status check
 
 app = FastAPI(title="Wake-on-LAN API", version="1.2")
@@ -32,17 +31,12 @@ async def wake_pc(request: WakeRequest):
     """
     try:
         mac = request.mac_address or MAC_ADDRESS
-        broadcast = request.broadcast_ip or BROADCAST_IP
 
         if not mac:
             raise HTTPException(status_code=400, detail="MAC address not provided")
 
-        if broadcast:
-            send_magic_packet(mac, ip_address=broadcast)
-            msg = f"Magic packet sent to {mac} via {broadcast}"
-        else:
-            send_magic_packet(mac)
-            msg = f"Magic packet sent to {mac} (no broadcast specified)"
+        send_magic_packet(mac)
+        msg = f"Magic packet sent to {mac}"
 
         return {"status": "success", "message": msg}
 
@@ -58,11 +52,9 @@ async def wake_default_pc():
     try:
         if not MAC_ADDRESS:
             raise HTTPException(status_code=400, detail="Default MAC address not configured")
-        if not BROADCAST_IP:
-            raise HTTPException(status_code=400, detail="Broadcast IP not configured")
 
-        send_magic_packet(MAC_ADDRESS, ip_address=BROADCAST_IP)
-        msg = f"Magic packet sent to {MAC_ADDRESS} via {BROADCAST_IP}"
+        send_magic_packet(MAC_ADDRESS)
+        msg = f"Magic packet sent to {MAC_ADDRESS}"
 
         return {"status": "success", "message": msg}
 

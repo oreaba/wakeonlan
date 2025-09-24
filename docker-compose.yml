@@ -3,8 +3,8 @@ services:
     # build: .
     image: oreaba/wakeonlan:latest
     container_name: wakeonlan
-    env_file:
-      - .env
+    # env_file:
+      # - .env
     ports:
       - "80:80"
     restart: unless-stopped
